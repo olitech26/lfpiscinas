@@ -1,8 +1,7 @@
 -- =========================================================
--- PRIMEIRO ACESSO CORRIGIDO - AGENDAMENTO OLITECH
--- Usuário padrão: olitech
--- Senha padrão: 051309
--- Rode no Supabase: SQL Editor > New Query > Run
+-- CORRIGIR LOGIN + RLS SUPABASE - AGENDAMENTO OLITECH
+-- Use quando o usuário existe na tabela, mas o sistema diz que não encontrou.
+-- Login final: olitech / 051309
 -- =========================================================
 
 create extension if not exists "pgcrypto";
@@ -17,23 +16,14 @@ create table if not exists public.usuarios (
   criado_em timestamptz default now()
 );
 
-alter table public.usuarios add column if not exists nome text not null default '';
-alter table public.usuarios add column if not exists usuario text;
-alter table public.usuarios add column if not exists senha text;
-alter table public.usuarios add column if not exists perfil text not null default 'admin';
 alter table public.usuarios add column if not exists ativo boolean not null default true;
 alter table public.usuarios add column if not exists criado_em timestamptz default now();
 
--- Remove usuários padrão antigos/duplicados e cria o usuário correto
 delete from public.usuarios where lower(coalesce(usuario,'')) in ('olitech','admin');
-
 insert into public.usuarios (nome, usuario, senha, perfil, ativo)
 values ('OLITECH', 'olitech', '051309', 'admin', true);
 
--- Índice único simples para evitar duplicidade futura
-create unique index if not exists usuarios_usuario_unique on public.usuarios (usuario);
-
--- Remove bloqueios de RLS e também cria políticas abertas de segurança
+-- Garante que a anon key do Render consiga ler a tabela
 alter table public.usuarios disable row level security;
 
 drop policy if exists usuarios_select_all on public.usuarios;
@@ -41,14 +31,14 @@ drop policy if exists usuarios_insert_all on public.usuarios;
 drop policy if exists usuarios_update_all on public.usuarios;
 drop policy if exists usuarios_delete_all on public.usuarios;
 
+-- Deixo políticas abertas também, caso o Supabase reative RLS pela tela
 alter table public.usuarios enable row level security;
 create policy usuarios_select_all on public.usuarios for select to anon, authenticated using (true);
 create policy usuarios_insert_all on public.usuarios for insert to anon, authenticated with check (true);
 create policy usuarios_update_all on public.usuarios for update to anon, authenticated using (true) with check (true);
 create policy usuarios_delete_all on public.usuarios for delete to anon, authenticated using (true);
-
--- Permissões para o frontend
 alter table public.usuarios disable row level security;
+
 grant usage on schema public to anon, authenticated;
 grant select, insert, update, delete on public.usuarios to anon, authenticated;
 grant usage, select on all sequences in schema public to anon, authenticated;

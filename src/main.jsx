@@ -43,20 +43,11 @@ function App() {
     let {data,error}=await supabase
       .from("usuarios")
       .select("id,nome,usuario,senha,perfil,ativo")
-      .order("usuario", { ascending: true });
+      .ilike("usuario", u)
+      .limit(1);
 
     if(error){
-      return alert("Erro ao consultar usuários: "+error.message+"\n\nVerifique se rodou o schema_banco_vazio.sql e se a tabela public.usuarios está liberada.");
-    }
-
-    // Sistema novo: se o banco estiver vazio, cria o admin padrão automaticamente.
-    if(!data || data.length===0){
-      const adminPadrao={nome:"OLITECH",usuario:"olitech",senha:"051309",perfil:"admin",ativo:true};
-      const ins=await supabase.from("usuarios").insert(adminPadrao).select("id,nome,usuario,senha,perfil,ativo").maybeSingle();
-      if(ins.error){
-        return alert("Nenhum usuário cadastrado e não foi possível criar o admin padrão. Rode o script criar_admin_primeiro_acesso.sql no Supabase.\n\nErro: "+ins.error.message);
-      }
-      data=[ins.data];
+      return alert("Erro ao consultar usuários: "+error.message+"\n\nRode o arquivo corrigir_login_rls_supabase.sql no Supabase e depois faça Clear Build Cache & Deploy no Render.");
     }
 
     const user=(data||[]).find(x=>
@@ -66,8 +57,7 @@ function App() {
     );
 
     if(!user){
-      const usuarios=(data||[]).map(x=>x.usuario).filter(Boolean).join(", ") || "nenhum";
-      return alert("Usuário ou senha inválidos.\n\nUsuários encontrados no banco: "+usuarios+"\n\nPadrão inicial: olitech / 051309");
+      return alert("Usuário ou senha inválidos, ou o Supabase está bloqueando a leitura por RLS.\n\nRode no Supabase o arquivo corrigir_login_rls_supabase.sql.\n\nLogin padrão: olitech / 051309");
     }
 
     const sess={...user,perfil:user.perfil||"admin",permissoes:MODULES.map(m=>m[0])};
