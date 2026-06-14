@@ -88,3 +88,9 @@ textarea { line-height:1.35; }
   .actions .btn, .btn { width:100%; min-height:44px; }
   input, select, textarea { font-size:16px !important; min-height:46px !important; }
 }
+
+/* Ajustes de filtros financeiros/agendamentos */
+.filter-buttons{display:flex;gap:10px;flex-wrap:wrap;margin:10px 0 16px}
+.summary-cards{grid-template-columns:repeat(auto-fit,minmax(150px,1fr));margin:10px 0 18px}
+.summary-cards .mini-card{min-height:72px}
+@media(max-width:700px){.filter-buttons .btn{width:100%;justify-content:center}.summary-cards{grid-template-columns:1fr 1fr}.form-grid{grid-template-columns:1fr!important}}

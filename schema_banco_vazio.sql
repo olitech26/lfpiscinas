@@ -214,3 +214,9 @@ grant usage, select on all sequences in schema public to anon, authenticated;
 notify pgrst, 'reload schema';
 
 select 'OK - schema corrigido' as status;
+
+-- Ajustes de consulta financeira e busca por status
+alter table public.agendamentos add column if not exists data_vencimento date;
+alter table public.financeiro_movimentos add column if not exists cliente_nome text;
+alter table public.financeiro_movimentos add column if not exists data_vencimento date;
+notify pgrst, 'reload schema';

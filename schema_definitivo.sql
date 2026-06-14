@@ -214,3 +214,38 @@ grant usage, select on all sequences in schema public to anon, authenticated;
 notify pgrst, 'reload schema';
 
 select 'OK - schema corrigido' as status;
+
+-- =========================================================
+-- AJUSTE 2026-06-14 - BUSCAS AGENDAMENTO + FINANCEIRO
+-- =========================================================
+alter table public.agendamentos add column if not exists data_vencimento date;
+alter table public.agendamentos add column if not exists total numeric default 0;
+alter table public.agendamentos add column if not exists valor_sinal numeric default 0;
+alter table public.agendamentos add column if not exists valor_recebido numeric default 0;
+alter table public.agendamentos add column if not exists recebido numeric default 0;
+alter table public.agendamentos add column if not exists saldo numeric default 0;
+alter table public.agendamentos add column if not exists status_pagamento text default 'pendente';
+alter table public.agendamentos add column if not exists servico text;
+alter table public.agendamentos add column if not exists servico_nome text;
+
+alter table public.financeiro_movimentos add column if not exists cliente_nome text;
+alter table public.financeiro_movimentos add column if not exists data_vencimento date;
+alter table public.financeiro_movimentos add column if not exists forma_pagamento text;
+alter table public.financeiro_movimentos add column if not exists status text default 'pago';
+alter table public.financeiro_movimentos add column if not exists observacoes text;
+
+alter table public.pagamentos add column if not exists nome text;
+alter table public.pagamentos add column if not exists tipo text;
+alter table public.pagamentos add column if not exists taxa_percentual numeric default 0;
+alter table public.pagamentos add column if not exists desconto_percentual numeric default 0;
+alter table public.pagamentos add column if not exists ativo boolean not null default true;
+
+alter table public.agendamentos disable row level security;
+alter table public.financeiro_movimentos disable row level security;
+alter table public.pagamentos disable row level security;
+
+grant select, insert, update, delete on public.agendamentos to anon, authenticated;
+grant select, insert, update, delete on public.financeiro_movimentos to anon, authenticated;
+grant select, insert, update, delete on public.pagamentos to anon, authenticated;
+
+notify pgrst, 'reload schema';
