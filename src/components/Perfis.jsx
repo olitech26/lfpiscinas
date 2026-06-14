@@ -2,28 +2,21 @@ import React, { useEffect, useState } from "react";
 import { MODULES, supabase } from "../supabaseClient";
 
 function normalizarPermissoes(valor) {
-  if (Array.isArray(valor)) return valor;
+  if (Array.isArray(valor)) return valor.filter(Boolean);
   if (!valor) return [];
   if (typeof valor === "string") {
     try {
-      const j = JSON.parse(valor);
-      return normalizarPermissoes(j);
+      return normalizarPermissoes(JSON.parse(valor));
     } catch {
       return valor.split(",").map(x => x.trim()).filter(Boolean);
     }
   }
   if (typeof valor === "object") {
     return Object.entries(valor)
-      .filter(([, v]) => v === true || v === "true" || v === 1)
+      .filter(([, v]) => v === true || v === "true" || v === 1 || v === "1")
       .map(([k]) => k);
   }
   return [];
-}
-
-function permissoesParaBanco(lista) {
-  const obj = {};
-  (lista || []).forEach(k => { obj[k] = true; });
-  return obj;
 }
 
 export default function Perfis() {
@@ -56,16 +49,22 @@ export default function Perfis() {
 
   async function salvar() {
     if (!nome.trim()) return alert("Informe o perfil.");
+
     const payload = {
       nome: nome.trim(),
       descricao: nome.trim(),
-      permissoes: permissoesParaBanco(permissoes),
+      permissoes: permissoes,
       ativo: true
     };
+
     const resp = editando
       ? await supabase.from("perfis").update(payload).eq("id", editando)
       : await supabase.from("perfis").insert(payload);
-    if (resp.error) return alert("Erro ao salvar perfil: " + resp.error.message + "\n\nRode o script corrigir_financeiro_perfis_agendamento.sql e atualize com CTRL+F5.");
+
+    if (resp.error) {
+      return alert("Erro ao salvar perfil: " + resp.error.message + "\n\nRode o script schema_definitivo.sql atualizado no Supabase e atualize com CTRL+F5.");
+    }
+
     setNome("");
     setPermissoes([]);
     setEditando(null);
@@ -98,13 +97,16 @@ export default function Perfis() {
       <hr />
       {carregando && <p>Carregando perfis...</p>}
       <div className="cards-list">
-        {lista.map(p => (
-          <div className="mini-card" key={p.id}>
-            <b>{p.nome}</b>
-            <p>Permissões: {(p.permissoes_lista || []).join(", ") || "Nenhuma"}</p>
-            <button className="btn secondary" onClick={() => editar(p)}>Editar</button>
-          </div>
-        ))}
+        {lista.map(p => {
+          const listaPermissoes = Array.isArray(p.permissoes_lista) ? p.permissoes_lista : normalizarPermissoes(p.permissoes_lista || p.permissoes);
+          return (
+            <div className="mini-card" key={p.id}>
+              <b>{p.nome}</b>
+              <p>Permissões: {listaPermissoes.length ? listaPermissoes.join(", ") : "Nenhuma"}</p>
+              <button className="btn secondary" onClick={() => editar(p)}>Editar</button>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

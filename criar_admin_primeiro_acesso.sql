@@ -1,5 +1,5 @@
 -- =========================================================
--- PRIMEIRO ACESSO CORRIGIDO - AGENDAMENTO OLITECH
+-- PRIMEIRO ACESSO - SISTEMA AGENDAMENTO OLITECH / EMPRESAS
 -- Usuário padrão: olitech
 -- Senha padrão: 051309
 -- Rode no Supabase: SQL Editor > New Query > Run
@@ -17,37 +17,46 @@ create table if not exists public.usuarios (
   criado_em timestamptz default now()
 );
 
-alter table public.usuarios add column if not exists nome text not null default '';
-alter table public.usuarios add column if not exists usuario text;
-alter table public.usuarios add column if not exists senha text;
-alter table public.usuarios add column if not exists perfil text not null default 'admin';
 alter table public.usuarios add column if not exists ativo boolean not null default true;
 alter table public.usuarios add column if not exists criado_em timestamptz default now();
 
--- Remove usuários padrão antigos/duplicados e cria o usuário correto
-delete from public.usuarios where lower(coalesce(usuario,'')) in ('olitech','admin');
+-- Remove duplicados do usuário padrão
+create temporary table if not exists tmp_keep_usuarios as
+select min(id::text)::uuid as id_keep, lower(usuario) as usuario_lower
+from public.usuarios
+where usuario is not null
+group by lower(usuario);
 
+delete from public.usuarios u
+using tmp_keep_usuarios k
+where lower(u.usuario)=k.usuario_lower
+  and u.id<>k.id_keep;
+
+drop table if exists tmp_keep_usuarios;
+
+-- Índice único por usuário, sem diferenciar maiúscula/minúscula
+do $$
+begin
+  if not exists (
+    select 1 from pg_indexes
+    where schemaname='public'
+      and tablename='usuarios'
+      and indexname='usuarios_usuario_lower_unique'
+  ) then
+    create unique index usuarios_usuario_lower_unique on public.usuarios (lower(usuario));
+  end if;
+end $$;
+
+-- Cria/atualiza admin padrão
 insert into public.usuarios (nome, usuario, senha, perfil, ativo)
-values ('OLITECH', 'olitech', '051309', 'admin', true);
+values ('OLITECH', 'olitech', '051309', 'admin', true)
+on conflict (lower(usuario)) do update set
+  nome=excluded.nome,
+  senha=excluded.senha,
+  perfil=excluded.perfil,
+  ativo=true;
 
--- Índice único simples para evitar duplicidade futura
-create unique index if not exists usuarios_usuario_unique on public.usuarios (usuario);
-
--- Remove bloqueios de RLS e também cria políticas abertas de segurança
-alter table public.usuarios disable row level security;
-
-drop policy if exists usuarios_select_all on public.usuarios;
-drop policy if exists usuarios_insert_all on public.usuarios;
-drop policy if exists usuarios_update_all on public.usuarios;
-drop policy if exists usuarios_delete_all on public.usuarios;
-
-alter table public.usuarios enable row level security;
-create policy usuarios_select_all on public.usuarios for select to anon, authenticated using (true);
-create policy usuarios_insert_all on public.usuarios for insert to anon, authenticated with check (true);
-create policy usuarios_update_all on public.usuarios for update to anon, authenticated using (true) with check (true);
-create policy usuarios_delete_all on public.usuarios for delete to anon, authenticated using (true);
-
--- Permissões para o frontend
+-- Permissões para o frontend Supabase anon/authenticated
 alter table public.usuarios disable row level security;
 grant usage on schema public to anon, authenticated;
 grant select, insert, update, delete on public.usuarios to anon, authenticated;
